@@ -107,7 +107,8 @@ main:
     li s1 0b000000000000000000000000000000
     li s2 0b000000000000000000000000000000
 
-    li s9 0
+inner_main:
+    jal read_input
     jal update_grid_state
     jal print_row_border
     mv a0 s0
@@ -121,7 +122,8 @@ main:
     mv a0 s2
     jal print_row_entries
     jal print_row_border
-    
+    j inner_main
+end:    
     li a7 10
     ecall
 
@@ -201,6 +203,9 @@ read_input:
     
     lw ra 28(sp)
     addi sp sp 32
+    lb t0 0(gp)
+    li t1 0x77
+    bne t0 t1 read_input
     jalr ra
     
 update_grid_state:
@@ -252,6 +257,7 @@ update_grid_state:
     
 
 update_grid_state_exit:
+    jal reverse_mask
     lw ra 28(sp)
     lw s0 24(sp)
     lw s1 20(sp)
@@ -261,8 +267,6 @@ update_grid_state_exit:
     lw s5 4(sp)
     lw s6 0(sp)
     addi sp sp 32
-
-    jal reverse_mask
     # MOVE OUTPUT OF REVERSE_MASK TO AFFECTED ROW
     beq a4 zero update_row_0
     beq a4 s5 update_row_1
@@ -325,6 +329,6 @@ reverse_mask:
     
     lw ra 28(sp)
     addi sp sp 32
-    jalr ra
+    ret
 
     
