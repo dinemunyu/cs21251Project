@@ -6,6 +6,7 @@ column_border: .asciz "|"
 new_line: .asciz "\n"
 game_over: .asciz "Game over."
 empty_cell: .asciz "   "
+space: .asciz " "
 
 .text
 
@@ -173,13 +174,19 @@ print_row_entries:
 print_row_entry:
     addi sp sp -32
     sw ra 28(sp)
+    sw t0 24(sp)
+    sw t1 20(sp)
+    li t0 9
+    li t1 99
     beq s4 zero print_row_entries_empty
+    blt s4 t0 print_space_ones
+    blt s4 t1 print_space_tens
     mv a0 s4
     li a7 1
-    j back
-back: 
     ecall
-    
+back:
+    lw t1 20(sp)
+    lw t0 24(sp)
     lw ra 28(sp)
     addi sp sp 32
     jalr ra
@@ -187,8 +194,30 @@ back:
 print_row_entries_empty:
     la a0 empty_cell
     li a7 4
+    ecall
     j back
 
+print_space_ones:
+    la a0 space
+    li a7 4 
+    ecall
+    mv a0 s4
+    li a7 1
+    ecall
+    la a0 space
+    li a7 4 
+    ecall
+    j back
+    
+print_space_tens:
+    la a0 space
+    li a7 4 
+    ecall
+    mv a0 s4
+    li a7 1
+    ecall
+    j back
+    
 ##########################
 read_input:
     addi sp sp -32
