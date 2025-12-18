@@ -210,7 +210,7 @@ read_input:
     beq t0 t1 proceed
     beq t0 t2 proceed
     beq t0 t3 proceed
-    beq t0 t3 proceed  
+    beq t0 t4 proceed  
     j read_input  
 proceed:
     lw ra 28(sp)
@@ -488,12 +488,25 @@ move_return:
     jalr ra
     
 move_group:
+    beq a0 zero CASE_0
     beq a0 a1 CASE_1
     beq a1 zero CASE_2
     beq a1 a2 CASE_3
     # if it reaches this point, it does not need to update this row
     jalr ra
     
+CASE_0:
+    beq a1 zero CASE_0_1
+    mv a0 a1
+    mv a1 a2
+    li a2 0
+    jalr ra
+    
+CASE_0_1:
+    mv a0 a2
+    li a2 0
+    jalr ra
+
 CASE_1:
     add a0 a0 a1
     add a1 zero a2
@@ -620,7 +633,7 @@ down:
     mv s7 a1 
     mv s4 a2 
 
-    mv a0 s5
+    mv a0 s11
     mv a1 s8
     mv a2 s5
     jal move_group
