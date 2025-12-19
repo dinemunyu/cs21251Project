@@ -26,9 +26,9 @@ inner_prologue:
     mv t0 a0
     li t1 1 
     li t2 2
-
+    beq t0 t1 newgame
     beq t0 t2 continue
-    j end
+    j inner_prologue
     
 start_input_parsing:
     addi sp sp -32
@@ -172,6 +172,39 @@ parse_from_start:
     lw ra 28(sp)
     addi sp sp 32
     jalr ra
+
+newgame:
+    li t3 3      # constant 3
+    li t6 10     # constant 10
+    li a7 30     # using time as medium for randomization (row 1-3)
+    ecall
+    rem t4 a0 t3 # save remainder to t4
+    li a7 30     # using time as medium for randomization again (col 1-3)
+    ecall
+    rem t5 a0 t3 # save remainder to t5
+
+    mul t5 t5 t6 # to be used for sll
+    li a0 2      # the 2 to be inserted
+    sll a0 a0 t5 # whichever column
+    addi t3 t3 -1
+    #row
+    beq t4 t3 choose_s0
+    addi t3 t3 -1
+    beq t4 t3 choose_s1
+    addi t3 t3 -1
+    beq t4 t3 choose_s2
+    addi t3 t3 -1
+    j end # reusing the grid printing from main just in case
+
+choose_s0:
+    mv s0 a0
+    j inner_main # reusing the grid printing from main
+choose_s1:
+    mv s1 a0
+    j inner_main # reusing the grid printing from main
+choose_s2:
+    mv s2 a0
+    j inner_main # reusing the grid printing from main
     
 main:
     jal read_input
@@ -260,13 +293,13 @@ back:
     addi sp sp 32
     jalr ra
 
-print_row_entries_empty:
+print_row_entries_empty: # pads spaces for 0
     la a0 empty_cell
     li a7 4
     ecall
     j back
 
-print_space_ones:
+print_space_ones: # pads spaces for ones digits
     la a0 space
     li a7 4 
     ecall
@@ -278,7 +311,7 @@ print_space_ones:
     ecall
     j back
     
-print_space_tens:
+print_space_tens: # pads spaces for tens digits
     la a0 space
     li a7 4 
     ecall
@@ -309,9 +342,9 @@ read_input:
     beq t0 t2 proceed
     beq t0 t3 proceed
     beq t0 t4 proceed  
-    li t1 0x78 #x
+    li t1 0x78 # x
     beq t0 t1 end
-    li t1 0x51
+    li t1 0x51 # X
     beq t0 t1 end
     j read_input  
 proceed:
@@ -589,6 +622,29 @@ move_return:
     mv s2 t6
     jalr ra
     
+# From the logic of left:
+    # LET A, B, C BE REGISTERS IN ORDER FROM LEFT TO RIGHT
+    # SUCH THAT A, B, C = a0, a1, a2 
+    # CASES:
+        # 0. IF A == 0:
+            # IF B == 0:
+                # A = C
+            # ELSE:
+                # A = B
+                # B = C
+                # C = 0
+        # 1. IF A == B:
+            # ADD B TO A, B = C, C = 0
+        # 2. IF B == 0:
+            # IF A == C:
+                # ADD C TO A, C = 0
+        # 3. ELSE:
+            # B == C:
+                # ADD C TO B, C = 0
+    
+    # By changing the combination of which saved registers are loaded to the corresponding
+    # function argument registers, the logic used in move_group + left can be re-used for 
+    # right, up, and down.
 move_group:
     beq a0 zero CASE_0
     beq a0 a1 CASE_1
@@ -631,29 +687,6 @@ CASE_3:
     add a2 zero zero
     jalr ra
     
-# From the logic of left:
-    # LET A, B, C BE REGISTERS IN ORDER FROM LEFT TO RIGHT
-    # SUCH THAT A, B, C = a0, a1, a2 
-    # CASES:
-        # 0. IF A == 0:
-            # IF B == 0:
-                # A = C
-            # ELSE:
-                # A = B
-                # B = C
-                # C = 0
-        # 1. IF A == B:
-            # ADD B TO A, B = C, C = 0
-        # 2. IF B == 0:
-            # IF A == C:
-                # ADD C TO A, C = 0
-        # 3. ELSE:
-            # B == C:
-                # ADD C TO B, C = 0
-    
-    # By changing the combination of which saved registers are loaded to the corresponding
-    # function argument registers, the logic used in move_group + left can be re-used for 
-    # right, up, and down.
 left:
     mv a0 s3
     mv a1 s4
