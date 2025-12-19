@@ -7,11 +7,55 @@ new_line: .asciz "\n"
 game_over: .asciz "Game over."
 empty_cell: .asciz "   "
 space: .asciz " "
-
+choose_txt: .asciz "Choose [1] or [2]:\n"
+newgame_txt: .asciz "[1] New Game\n"
+startfromastate_txt: .asciz "[2] Start from a State\n"
+enterconfig_txt: .asciz "Enter a board configuration:\n"
+entermove_txt: .asciz "Enter a move:\n"
 .text
 
 prologue: 
-    j main
+    la a0 choose_txt
+    jal print_text
+    la a0 newgame_txt
+    jal print_text
+    la a0 startfromastate_txt
+    jal print_text
+inner_prologue:
+    jal start_input_parsing
+    mv t0 a0
+    li t1 1 
+    li t2 2
+
+    beq t0 t2 continue
+    j end
+    
+start_input_parsing:
+    addi sp sp -32
+    sw ra 28(sp)
+    # saves output to a0
+    li a7 63
+    li a0 0
+    la a1 buffer 
+    # USER INPUT IS STORED IN ADDRESS BUFFER
+    li a2 30
+    ecall
+    la t0 buffer      
+    lb t0 0(t0) 
+    addi t0 t0 -48
+    mv a0 t0
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+    
+print_text:
+    addi sp sp -32
+    sw ra 28(sp)
+    li a7 4
+    ecall
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
 
 print_row_border: 
     addi sp sp -32
@@ -89,8 +133,6 @@ exit_mask:
     lw s8 20(sp)
     addi sp sp 32
     jalr ra
-    
-
 
 # USES SAVED REGISTERS TO STORE STATE OF GRID
 # S0 = 1ST ROW
@@ -102,15 +144,40 @@ exit_mask:
 # T1 = 2ND COLUMN
 # T2 = 3RD COLUMN
 
+continue:
+    la a0 enterconfig_txt
+    jal print_text
+    jal parse_from_start
+    mv s0 a0
+    jal parse_from_start
+    mv s1 a0
+    jal parse_from_start
+    mv s2 a0
+    j inner_main # reusing the grid printing from main
+    
+parse_from_start:
+    # outputs row to a0
+    addi sp sp -32
+    sw ra 28(sp)
+    jal start_input_parsing
+    mv t0 a0 # leftmost
+    jal start_input_parsing
+    mv t1 a0 # center
+    jal start_input_parsing
+    mv t2 a0 # right
+    slli t0 t0 20
+    slli t1 t1 10
+    add a0 t0 t1
+    add a0 a0 t2
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+    
 main:
-    li s0 0b000000000000000000000000000000
-    li s1 0b000000000000000000000000000000
-    li s2 0b000000000000000000000000000000
-
-inner_main:
     jal read_input
     jal add
     jal update_grid_state
+inner_main:
     jal print_row_border
     mv a0 s0
     jal print_row_entries
@@ -123,7 +190,9 @@ inner_main:
     mv a0 s2
     jal print_row_entries
     jal print_row_border
-    j inner_main
+    la a0 entermove_txt
+    jal print_text
+    j main
 end:    
     li a7 10
     ecall
@@ -562,6 +631,29 @@ CASE_3:
     add a2 zero zero
     jalr ra
     
+# From the logic of left:
+    # LET A, B, C BE REGISTERS IN ORDER FROM LEFT TO RIGHT
+    # SUCH THAT A, B, C = a0, a1, a2 
+    # CASES:
+        # 0. IF A == 0:
+            # IF B == 0:
+                # A = C
+            # ELSE:
+                # A = B
+                # B = C
+                # C = 0
+        # 1. IF A == B:
+            # ADD B TO A, B = C, C = 0
+        # 2. IF B == 0:
+            # IF A == C:
+                # ADD C TO A, C = 0
+        # 3. ELSE:
+            # B == C:
+                # ADD C TO B, C = 0
+    
+    # By changing the combination of which saved registers are loaded to the corresponding
+    # function argument registers, the logic used in move_group + left can be re-used for 
+    # right, up, and down.
 left:
     mv a0 s3
     mv a1 s4
