@@ -103,9 +103,9 @@ exit_mask:
 # T2 = 3RD COLUMN
 
 main:
-    li s0 0b000000001000000000100000000010
-    li s1 0b000000001000000000100000100000
-    li s2 0b010000000000100000000001000000
+    li s0 0b000000000000000000000000000000
+    li s1 0b000000000000000000000000000000
+    li s2 0b000000000000000000000000000000
 
 inner_main:
     jal read_input
@@ -544,6 +544,8 @@ CASE_1:
     
 CASE_2:
     beq a0 a2 CASE_2_1
+    add a1 zero a2
+    add a2 zero zero
     jalr ra
     
 CASE_2_1:
