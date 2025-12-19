@@ -109,8 +109,8 @@ main:
 
 inner_main:
     jal read_input
-    #jal update_grid_state
     jal add
+    jal update_grid_state
     jal print_row_border
     mv a0 s0
     jal print_row_entries
@@ -362,7 +362,7 @@ reverse_mask:
     addi sp sp -32
     sw ra 28(sp)
     
-    add a0 a0 s2 # RIGHTMOST COLUMN
+    add a0 zero s2 # RIGHTMOST COLUMN
     slli s1 s1 10
     add a0 a0 s1 # MIDDLE COLUMN
     slli s0 s0 20
