@@ -240,6 +240,10 @@ read_input:
     beq t0 t2 proceed
     beq t0 t3 proceed
     beq t0 t4 proceed  
+    li t1 0x78 #x
+    beq t0 t1 end
+    li t1 0x51
+    beq t0 t1 end
     j read_input  
 proceed:
     lw ra 28(sp)
