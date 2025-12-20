@@ -190,16 +190,59 @@ choose_s2:
     j inner_main # reusing the grid printing from main
     
 main:
+    addi sp sp -64
+    jal can_move
+    beq t6 zero end
+    
+    la a0 entermove_txt
+    jal print_text
+    
     jal read_input
+    
+    sw s0 60(sp)
+    sw s1 56(sp)
+    sw s2 52(sp)
+    
     jal add
+    
     jal check_win
+    
+    sw a0 48(sp)
+    sw a1 44(sp)
+    sw a2 40(sp)
+    sw a3 36(sp)
+    sw a4 32(sp)
+    sw a5 28(sp)
+    
+    lw a0 60(sp)
+    lw a1 56(sp)
+    lw a2 52(sp)
+    mv a3 s0
+    mv a4 s1
+    mv a5 s2
+    
+    jal check_add_used
+    beq a0 zero inner_main
+    
+    lw a0 48(sp)
+    lw a1 44(sp)
+    lw a2 40(sp)
+    lw a3 36(sp)
+    lw a4 32(sp)
+    lw a5 28(sp)
+        
     jal update_grid_state
 inner_main:
     jal print_grid
-    la a0 entermove_txt
-    jal print_text
+    jal reset_LED_matrix
+    jal update_LED_matrix
     j main
-end:    
+end:   
+    jal reset_LED_matrix
+    jal update_LED_matrix
+    la a0 game_over
+    li a7 4
+    ecall
     li a7 10
     ecall
     
@@ -265,6 +308,28 @@ print_row_entries:
     addi sp sp 32
     jalr ra
 
+
+# ASSUMES INPUT IS IN a0 a1 a2 & a3 a4 a5
+# ASSUMES OUTPUT IS IN a0
+check_add_used:
+    addi sp sp -32
+    sw ra 28(sp)
+    
+    bne a0 a3 check_add_used_exit
+    bne a1 a4 check_add_used_exit
+    bne a2 a5 check_add_used_exit
+    
+    li a0 0 # FALSE
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+    
+check_add_used_exit:
+    li a0 1 # TRUE
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+    
 check_win:
     addi sp sp -32
     sw ra 28(sp)
@@ -682,6 +747,7 @@ move_group:
     
 CASE_0:
     beq a1 zero CASE_0_1
+    beq a1 a2 CASE_0_2
     mv a0 a1
     mv a1 a2
     li a2 0
@@ -690,6 +756,12 @@ CASE_0:
 CASE_0_1:
     mv a0 a2
     li a2 0
+    jalr ra
+    
+CASE_0_2:
+    add a0 a2 a2
+    li a1 0
+    li a2 0 
     jalr ra
 
 CASE_1:
@@ -885,4 +957,269 @@ done:
     addi sp, sp, 32
     #end#
     jalr ra
+
+# OUTPUT IS IN t6
+can_move:
+    addi sp sp -64
+    sw ra 60(sp)
+    sw s3 56(sp)
+    sw s4 52(sp)
+    sw s5 48(sp)
+    sw s6 44(sp)
+    sw s7 40(sp)
+    sw s8 36(sp)
+    sw s9 32(sp)
+    sw s10 28(sp)
+    sw s11 24(sp)
+    sw s0 20(sp)
+    sw s1 16(sp)
+    sw s2 12(sp)
+    
+    #input get column
+    mv a0 s0
+    mv a1 s1
+    mv a2 s2
+    
+    # 1st col
+    li a3 0
+    jal get_column
+    mv s3 s0
+    mv s6 s1
+    mv s9 s2
+    
+    # 2nd col
+    li a3 1
+    jal get_column
+    mv s4 s0
+    mv s7 s1
+    mv s10 s2
+    
+    # 3rd col
+    li a3 2
+    jal get_column
+    mv s5 s0
+    mv s8 s1
+    mv s11 s2
+    
+    li t6 0 # currently false
+    # if reg is 0
+    beq s3 zero can_move_true
+    beq s4 zero can_move_true
+    beq s5 zero can_move_true
+    beq s6 zero can_move_true
+    beq s7 zero can_move_true
+    beq s8 zero can_move_true
+    beq s9 zero can_move_true
+    beq s10 zero can_move_true
+    beq s11 zero can_move_true
+    
+    # check cardinal direction equality
+    beq s3 s4 can_move_true
+    beq s3 s6 can_move_true
+    
+    beq s4 s5 can_move_true
+    beq s4 s7 can_move_true
+    
+    beq s5 s8 can_move_true
+    
+    beq s6 s7 can_move_true
+    beq s6 s9 can_move_true
+    
+    beq s7 s8 can_move_true
+    beq s7 s10 can_move_true
+    
+    beq s8 s11 can_move_true
+    
+    beq s9 s10 can_move_true
+    
+    beq s10 s11 can_move_true
+    
+can_move_end:
+    lw s0 20(sp)
+    lw s1 16(sp)
+    lw s2 12(sp)
+    lw ra 60(sp)
+    lw ra 60(sp)
+    lw s3 56(sp)
+    lw s4 52(sp)
+    lw s5 48(sp)
+    lw s6 44(sp)
+    lw s7 40(sp)
+    lw s8 36(sp)
+    lw s9 32(sp)
+    lw s10 28(sp)
+    lw s11 24(sp)
+    addi sp sp 64
+    jalr ra
+    
+can_move_true:
+    li t6 1
+    j can_move_end
+    
+
+reset_LED_matrix:
+    addi sp sp -32
+    sw ra 28(sp)
+    li a0 LED_MATRIX_0_BASE
+    li a1 LED_MATRIX_0_HEIGHT
+    li a3 0 # COUNTER: COL
+    li a4 0 # COLOR: BLACK
+    
+LED_loop: 
+    beq a3 a1 reset_LED_matrix_exit
+    li a2 0 # COUNTER: ROW
+    addi a3 a3 1
+LED_inner_loop:    
+    beq a2 a1 LED_loop
+    sw a4 0(a0)
+    addi a0 a0 4
+    addi a2 a2 1
+    j LED_inner_loop
+    
+reset_LED_matrix_exit:
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+
+# ASSUMES INPUT IS IN s0 s1 s2
+# uses a0
+update_LED_matrix:
+    addi sp sp -32
+    sw ra 28(sp)
+    sw s0 24(sp)
+    sw s1 20(sp)
+    sw s2 16(sp)
+    
+    # FIRST ROW: s0
+    mv a0 s0
+    jal mask 
+    # FIRST ROW ENTRIES: s0, s1, s2
+    
+    li a0 LED_MATRIX_0_BASE
+    mv a2 s0
+    jal print_pattern_LED
+    mv a2 s1
+    jal print_pattern_LED
+    mv a2 s2
+    jal print_pattern_LED
+    
+    # SECOND ROW: s1
+    lw s1 20(sp)
+    mv a0 s1
+    jal mask
+    #SECOND ROW ENTRIES: s0, s1, s2
+    
+    li a0 LED_MATRIX_0_BASE # RESET
+    addi a0 a0 48 # NEXT ROW
+    mv a2 s0
+    jal print_pattern_LED
+    mv a2 s1
+    jal print_pattern_LED
+    mv a2 s2 
+    jal print_pattern_LED
+    
+    # THIRD ROW: s2
+    lw s2 16(sp)
+    mv a0 s2
+    jal mask
+    # THIRD ROW ENTRIES: s0, s1, s2
+    
+    li a0 LED_MATRIX_0_BASE # RESET
+    addi a0 a0 96 # NEXT ROW
+    mv a2 s0
+    jal print_pattern_LED
+    mv a2 s1
+    jal print_pattern_LED
+    mv a2 s2 
+    jal print_pattern_LED
+    
+    lw ra 28(sp)
+    lw s0 24(sp)
+    lw s1 20(sp)
+    lw s2 16(sp)
+    addi sp sp 32
+    jalr ra
+
+# ASSUMES a2 stores the number of the current cell
+print_pattern_LED:
+    addi sp sp -32
+    sw ra 28(sp)
+    
+    beq a2 zero pattern_none
+    
+    li t0 2
+    li a1 0xb03221 # RED
+    beq a2 t0 pattern_one
+    
+    li t0 4
+    beq a2 t0 pattern_two
+    
+    li t0 8
+    beq a2 t0 pattern_three
+    
+    li t0 16
+    beq a2 t0 pattern_four
+    
+    li a1 0x6ebd2d # GREEN
+    li t0 32
+    beq a2 t0 pattern_one
+    
+    li t0 64
+    beq a2 t0 pattern_two
+    
+    li t0 128
+    beq a2 t0 pattern_three
+    
+    li t0 256
+    beq a2 t0 pattern_four
+    
+    li a1 0xe0c122 # YELLOW
+    li t0 512
+    beq a2 t0 pattern_four
+    
+print_pattern_LED_exit:
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+    
+
+# ASSUMES a0 STORES THE CURRENT LED INDEX 
+# ASSUMES a1 STORES THE COLOR OF THE LED
+
+pattern_none:
+    addi a0 a0 8
+    j print_pattern_LED_exit
+    
+pattern_one:
+    sw a1 0(a0) # CHANGE COLOR OF LED
+    addi a0 a0 8
+    j print_pattern_LED_exit
+
+pattern_two:
+    sw a1 0(a0)
+    addi a0 a0 28
+    sw a1 0(a0)
+    addi a0 a0 -24
+    addi a0 a0 4
+    j print_pattern_LED_exit
+    
+pattern_three:    
+    sw a1 0(a0) # TOP LEFT
+    addi a0 a0 28
+    sw a1 0(a0) # BOTTOM RIGHT
+    addi a0 a0 -24
+    sw a1 0(a0) # TOP RIGHT
+    addi a0 a0 4
+    j print_pattern_LED_exit
+    
+pattern_four: 
+    sw a1 0(a0) # TOP LEFT
+    addi a0 a0 24
+    sw a1 0(a0) # BOTTOM LEFT
+    addi a0 a0 4 
+    sw a1 0(a0) # BOTTOM RIGHT
+    addi a0 a0 -24
+    sw a1 0(a0) # TOP RIGHT
+    addi a0 a0 4
+    j print_pattern_LED_exit
     

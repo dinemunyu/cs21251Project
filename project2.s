@@ -73,12 +73,40 @@ main:
     li s2 0b010000000000100000000001000000
     
     jal update_LED_matrix
+    jal reset_LED_matrix
     li a7 10
     ecall
     
 # GREEN = #6ebd2d
 # RED = #b03221
 # YELLOW = #e0c122
+
+
+reset_LED_matrix:
+    addi sp sp -32
+    sw ra 28(sp)
+    li a0 LED_MATRIX_0_BASE
+    li a1 LED_MATRIX_0_HEIGHT
+    li a3 0 # COUNTER: COL
+    li a4 0 # COLOR: BLACK
+    
+LED_loop: 
+    bgt a3 a1 reset_LED_matrix_exit
+    li a2 0 # COUNTER: ROW
+    addi a3 a3 1
+LED_inner_loop:    
+    beq a2 a1 LED_loop
+    sw a4 0(a0)
+    addi a0 a0 4
+    addi a2 a2 1
+    j LED_inner_loop
+    
+    
+    
+reset_LED_matrix_exit:
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
 
 
 update_LED_matrix:
