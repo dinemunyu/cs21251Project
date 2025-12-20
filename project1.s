@@ -12,6 +12,7 @@ newgame_txt: .asciz "[1] New Game\n"
 startfromastate_txt: .asciz "[2] Start from a State\n"
 enterconfig_txt: .asciz "Enter a board configuration:\n"
 entermove_txt: .asciz "Enter a move:\n"
+congrats_txt: .asciz "Congratulations!\n"
 .text
 
 prologue: 
@@ -22,21 +23,13 @@ prologue:
     la a0 startfromastate_txt
     jal print_text
 inner_prologue:
-    jal start_input_parsing
+    jal read_int
     mv t0 a0
     li t1 1 
     li t2 2
     beq t0 t1 newgame
     beq t0 t2 continue
     j inner_prologue
-    
-start_input_parsing:
-    addi sp sp -32
-    sw ra 28(sp)
-    jal read_int    
-    lw ra 28(sp)
-    addi sp sp 32
-    jalr ra
     
 print_text:
     addi sp sp -32
@@ -149,11 +142,11 @@ parse_from_start:
     # outputs row to a0
     addi sp sp -32
     sw ra 28(sp)
-    jal start_input_parsing
+    jal read_int
     mv t0 a0 # leftmost
-    jal start_input_parsing
+    jal read_int
     mv t1 a0 # center
-    jal start_input_parsing
+    jal read_int
     mv t2 a0 # right
     slli t0 t0 20
     slli t1 t1 10
@@ -199,8 +192,20 @@ choose_s2:
 main:
     jal read_input
     jal add
+    jal check_win
     jal update_grid_state
 inner_main:
+    jal print_grid
+    la a0 entermove_txt
+    jal print_text
+    j main
+end:    
+    li a7 10
+    ecall
+    
+print_grid:
+    addi sp sp -32
+    sw ra 28(sp)
     jal print_row_border
     mv a0 s0
     jal print_row_entries
@@ -213,12 +218,9 @@ inner_main:
     mv a0 s2
     jal print_row_entries
     jal print_row_border
-    la a0 entermove_txt
-    jal print_text
-    j main
-end:    
-    li a7 10
-    ecall
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
 
 #######################
 print_row_entries:
@@ -270,14 +272,10 @@ check_win:
     li t0 0 # true or false (initially false)
     mv a0 s0
     jal check_512
-    beq t0 t1 inner_check_win
     mv a0 s1
     jal check_512
-    beq t0 t1 inner_check_win
     mv a0 s2   
-    jal check_512
-    
-inner_check_win:    
+    jal check_512    
     lw ra 28(sp)
     addi sp sp 32
     jalr ra
@@ -285,7 +283,7 @@ inner_check_win:
 check_512:
     addi sp sp -32
     sw ra 28(sp)
-    li t2 0b111111111100000000000000000000 # MASK, starts at rightmost number
+    li t2 0b100000000000000000000000000000 # MASK for 512
     and t3 a0 t2
     beq t3 t2 win
     srli t2 t2 10
@@ -293,14 +291,15 @@ check_512:
     beq t3 t2 win
     srli t2 t2 10
     and t3 a0 t2
-    beq t3 t2 win
-inner_check_512:   
+    beq t3 t2 win  
     lw ra 28(sp)
     addi sp sp 32
     jalr ra
-win:  
-    li t0 1
-    j inner_check_512
+win:
+    jal print_grid 
+    la a0 congrats_txt
+    jal print_text
+    j end
 print_row_entry:
     addi sp sp -32
     sw ra 28(sp)
@@ -831,46 +830,59 @@ down:
     mv s5 a2 
     j move_return
     
-read_int:
-    addi sp, sp, -32
-    sw s0, 28(sp)
-    sw ra, 24(sp)
-
+read_int: # sy's read_int function from lab3a
+    #preamble#
+    addi sp, sp -32
+    sw ra, 28(sp)
+    sw s0, 24(sp)
+    sw t0 20(sp)
+    sw t1 16(sp)
+    sw t2 12(sp)
+    #preamble#
+ 
     li a7, 63
     li a0, 0
     la a1, buffer
     li a2, 30
     ecall
-
-    addi a0, zero, 0
-    addi a3, zero, 0
-    addi t1, zero, 45
-    addi t2, zero, 10
-    addi t3, zero, -1
-
-    lb s0, 0(gp)
-    j positive
-
-positive:
-    beq s0, t2, done
-    addi s0, s0, -48
-    mul a0, a0, t2
-    add a0, s0, a0
-    addi gp, gp, 1
-    lb, s0, 0(gp)
-    j loop
-
-loop:
-    beq s0, t2, done
-    addi s0, s0, -48
-    mul a0, a0, t2
-    add a0, s0, a0
-    addi gp, gp, 1
-    lb, s0, 0(gp)
-    j loop
-
+ 
+    mv s0, a1
+    li t0, 48    #ascii value 0
+    li t1, 57    #ascii value 9
+    li t2, 45    #ascii value -
+    li t3, 1     
+    li t4, 0
+    li t5, 10    #multiplier 10
+    li a0, 0     #result
+    
+    lb t6, 0(s0)
+    bne t6, t2, iter    #for positive 
+    li t3, -1            #for  negative
+    addi s0, s0, 1
+    
+iter:
+    lb t6, 0(s0)
+    beq t6, t4, done     #if zero
+    #check if in range[0,9]
+    blt t6, t0, done
+    bgt t6, t1, done
+    #convert ascii to int
+    addi t6, t6, -48    #for next digit
+    mul a0, a0, t5
+    add a0, a0, t6     #the number so far
+    addi s0, s0, 1     #next byte
+    j iter
+    
 done:
-    lw ra, 24(sp)
-    lw s0, 28(sp)
-    addi, sp, sp, 32
+    mul a0, a0, t3
+    
+    #end#
+    lw t0 20(sp)
+    lw t1 16(sp)
+    lw t2 12(sp)
+    lw s0, 24(sp)
+    lw ra, 28(sp)
+    addi sp, sp, 32
+    #end#
     jalr ra
+    
