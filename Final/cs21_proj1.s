@@ -1,3 +1,7 @@
+# MATIAS, Gabriel Ian Carl A.
+# MORACA, Phoebe Renee P.
+# REFORMA, Syrelle Joy P.
+
 .data
 buffer: .zero 15
 row_border: .asciz "+---+---+---+\n"
