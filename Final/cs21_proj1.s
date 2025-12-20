@@ -423,14 +423,27 @@ read_input:
     
     la t0 buffer      
     lb t0 0(t0)       # DO NOT TOUCH!!!!
-    li t1 0x77 # w
-    li t2 0x61 # a
-    li t3 0x73 # s
-    li t4 0x64 # d     
+    
+    li t1 0x77 # w     
     beq t0 t1 proceed
+    li t1 0x57 # W
+    beq t0 t1 proceed
+    
+    li t2 0x61 # a
     beq t0 t2 proceed
+    li t2 0x41 # A
+    beq t0 t2 proceed
+    
+    li t3 0x73 # s
     beq t0 t3 proceed
+    li t3 0x53 # S
+    beq t0 t3 proceed
+    
+    li t4 0x64 # d
     beq t0 t4 proceed  
+    li t4 0x44 # D
+    beq t0 t4 proceed 
+    
     li t1 0x78 # x
     beq t0 t1 end
     li t1 0x58 # X
@@ -668,6 +681,14 @@ move:
     beq t0 t4 right
     beq t0 t1 up
     beq t0 t3 down
+    li t1 0x57 # W
+    li t2 0x41 # A
+    li t3 0x53 # S
+    li t4 0x44 # D  
+    beq t0 t2 left
+    beq t0 t4 right
+    beq t0 t1 up
+    beq t0 t3 down
     
 move_return:
     slli s3 s3 20
@@ -748,7 +769,8 @@ CASE_0_1:
     mv a0 a2
     li a2 0
     jalr ra
-    
+
+# when the configuration is 0 X X or X X 0     
 CASE_0_2:
     add a0 a2 a2
     li a1 0
