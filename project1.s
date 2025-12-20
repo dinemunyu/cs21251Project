@@ -1,5 +1,5 @@
 .data
-buffer: .zero 4
+buffer: .zero 15
 row_border: .asciz "+---+---+---+\n"
 column_border: .asciz "|"
 #checkpoint: .asciz " 2 "
@@ -33,17 +33,7 @@ inner_prologue:
 start_input_parsing:
     addi sp sp -32
     sw ra 28(sp)
-    # saves output to a0
-    li a7 63
-    li a0 0
-    la a1 buffer 
-    # USER INPUT IS STORED IN ADDRESS BUFFER
-    li a2 30
-    ecall
-    la t0 buffer      
-    lb t0 0(t0) 
-    addi t0 t0 -48
-    mv a0 t0
+    jal read_int    
     lw ra 28(sp)
     addi sp sp 32
     jalr ra
@@ -273,6 +263,44 @@ print_row_entries:
     addi sp sp 32
     jalr ra
 
+check_win:
+    addi sp sp -32
+    sw ra 28(sp)
+    li t1 1
+    li t0 0 # true or false (initially false)
+    mv a0 s0
+    jal check_512
+    beq t0 t1 inner_check_win
+    mv a0 s1
+    jal check_512
+    beq t0 t1 inner_check_win
+    mv a0 s2   
+    jal check_512
+    
+inner_check_win:    
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+
+check_512:
+    addi sp sp -32
+    sw ra 28(sp)
+    li t2 0b111111111100000000000000000000 # MASK, starts at rightmost number
+    and t3 a0 t2
+    beq t3 t2 win
+    srli t2 t2 10
+    and t3 a0 t2
+    beq t3 t2 win
+    srli t2 t2 10
+    and t3 a0 t2
+    beq t3 t2 win
+inner_check_512:   
+    lw ra 28(sp)
+    addi sp sp 32
+    jalr ra
+win:  
+    li t0 1
+    j inner_check_512
 print_row_entry:
     addi sp sp -32
     sw ra 28(sp)
@@ -802,3 +830,47 @@ down:
     mv s8 a1 
     mv s5 a2 
     j move_return
+    
+read_int:
+    addi sp, sp, -32
+    sw s0, 28(sp)
+    sw ra, 24(sp)
+
+    li a7, 63
+    li a0, 0
+    la a1, buffer
+    li a2, 30
+    ecall
+
+    addi a0, zero, 0
+    addi a3, zero, 0
+    addi t1, zero, 45
+    addi t2, zero, 10
+    addi t3, zero, -1
+
+    lb s0, 0(gp)
+    j positive
+
+positive:
+    beq s0, t2, done
+    addi s0, s0, -48
+    mul a0, a0, t2
+    add a0, s0, a0
+    addi gp, gp, 1
+    lb, s0, 0(gp)
+    j loop
+
+loop:
+    beq s0, t2, done
+    addi s0, s0, -48
+    mul a0, a0, t2
+    add a0, s0, a0
+    addi gp, gp, 1
+    lb, s0, 0(gp)
+    j loop
+
+done:
+    lw ra, 24(sp)
+    lw s0, 28(sp)
+    addi, sp, sp, 32
+    jalr ra
